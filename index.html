@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pool-Rechner – Dosierung</title>
+<style>
+  :root{
+    --water-deep:#0c3d47;
+    --water-mid:#0f5563;
+    --ink:#0a2a30;
+    --muted:#5b7077;
+    --surface:#eef4f5;
+    --card:#ffffff;
+    --line:#dde7e9;
+    --line-soft:#e9f0f1;
+    --chlor:#0fa3b1;
+    --chlor-soft:#e2f5f7;
+    --plus:#3b78d8;
+    --plus-soft:#e7eefb;
+    --minus:#e06a45;
+    --minus-soft:#fcece5;
+    --accent:var(--chlor);
+    --accent-soft:var(--chlor-soft);
+    --radius:16px;
+    --shadow:0 1px 2px rgba(12,61,71,.06), 0 8px 24px rgba(12,61,71,.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:
+      radial-gradient(120% 60% at 50% -10%, #d9eef0 0%, var(--surface) 55%) fixed;
+    color:var(--ink);
+    line-height:1.5;
+    padding:20px 16px 56px;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:560px;margin:0 auto}
+
+  /* Header */
+  header{margin:8px 4px 22px}
+  .eyebrow{
+    font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--water-mid);display:flex;align-items:center;gap:8px;margin-bottom:8px;
+  }
+  .eyebrow::before{content:"";width:22px;height:2px;background:var(--water-mid);border-radius:2px;display:inline-block}
+  h1{font-size:30px;font-weight:800;letter-spacing:-.02em;color:var(--water-deep);line-height:1.08}
+  .sub{color:var(--muted);font-size:15px;margin-top:7px;max-width:42ch}
+
+  /* Cards */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px 18px 20px;margin-bottom:16px;
+  }
+  .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .card-title{font-size:13px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
+  .vol-badge{
+    font-size:13px;font-weight:700;color:var(--water-mid);
+    background:#e6f1f2;border:1px solid #d2e5e7;border-radius:999px;padding:4px 11px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:6px}
+  .hint{font-weight:400;color:var(--muted);font-size:12px}
+  input,select{
+    width:100%;font-size:16px;font-family:inherit;color:var(--ink);
+    background:#fbfdfd;border:1.5px solid var(--line);border-radius:11px;
+    padding:11px 12px;transition:border-color .15s, box-shadow .15s;
+    font-variant-numeric:tabular-nums;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  input::placeholder{color:#a9bbbf}
+  select{appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235b7077' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;cursor:pointer}
+
+  .row{display:flex;gap:12px}
+  .row > *{flex:1;min-width:0}
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:0}
+  .suffix-wrap{position:relative}
+  .suffix{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);font-weight:600;pointer-events:none}
+  .suffix-wrap input{padding-right:46px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;background:#e7eff0;border-radius:13px;padding:5px;margin-bottom:16px}
+  .tab{
+    flex:1;border:none;background:transparent;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:700;color:var(--muted);
+    padding:9px 6px;border-radius:9px;transition:all .15s;letter-spacing:-.01em;
+  }
+  .tab[aria-selected="true"]{background:var(--card);color:var(--accent);box-shadow:0 1px 3px rgba(12,61,71,.12)}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  /* Result */
+  .result{
+    margin-top:18px;border-radius:13px;padding:18px;
+    background:var(--accent-soft);border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    text-align:center;
+  }
+  .result .lead{font-size:13px;font-weight:600;color:var(--ink);opacity:.7;margin-bottom:2px}
+  .result .amount{font-size:46px;font-weight:800;letter-spacing:-.03em;color:var(--accent);line-height:1.05;font-variant-numeric:tabular-nums}
+  .result .amount .unit{font-size:22px;font-weight:700;margin-left:4px}
+  .result .detail{font-size:13px;color:var(--muted);margin-top:7px;font-variant-numeric:tabular-nums}
+  .result.idle{background:#f3f7f8;border-color:var(--line)}
+  .result.idle .amount{color:var(--muted);font-size:22px;font-weight:700}
+  .result.warn{background:#fff7e8;border-color:#f0dca6}
+  .result.warn .amount{color:#a9762a;font-size:20px;font-weight:700}
+
+  /* Reference / package box */
+  .pkg{margin-top:16px;border-top:1px dashed var(--line);padding-top:15px}
+  .pkg-toggle{
+    display:flex;align-items:center;justify-content:space-between;width:100%;
+    background:none;border:none;cursor:pointer;font-family:inherit;
+    font-size:13px;font-weight:700;color:var(--water-mid);padding:0;letter-spacing:.01em;
+  }
+  .pkg-toggle .chev{transition:transform .2s}
+  .pkg-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  .pkg-body{margin-top:14px}
+  .pkg-body[hidden]{display:none}
+  .pkg-note{font-size:12px;color:var(--muted);margin-bottom:12px;background:var(--accent-soft);padding:9px 11px;border-radius:9px}
+  .formula{font-size:13px;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:4px}
+  .formula input{width:64px;padding:7px 8px;text-align:center;font-size:14px}
+  .formula .u{color:var(--muted);font-weight:600;font-size:13px}
+
+  /* Brand selector */
+  .brand-row{
+    display:flex;align-items:center;gap:10px;margin-bottom:16px;
+    background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);
+    border-radius:12px;padding:10px 12px;
+  }
+  .brand-row label{margin:0;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .brand-row label::before{content:"🏷";font-size:13px}
+  .brand-select{flex:1;background:var(--card);border-color:color-mix(in srgb,var(--accent) 28%,transparent);font-weight:600;padding:9px 34px 9px 11px}
+  .formula input.locked{background:#f1f5f6;color:var(--muted);border-color:var(--line-soft);cursor:default}
+  .pkg-flag{font-size:12px;color:var(--accent);font-weight:600;margin-bottom:10px;display:none}
+  .pkg-flag.show{display:block}
+
+  .ranges{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.7}
+  .ranges b{color:var(--ink)}
+
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px;line-height:1.6;padding:0 8px}
+  .save-note{background:#e6f1f2;border:1px solid #d2e5e7;border-radius:11px;padding:11px 13px;font-size:12.5px;color:var(--water-mid);margin-top:8px}
+
+  @media (max-width:420px){
+    h1{font-size:26px}
+    .result .amount{font-size:40px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Pool · Dosierung</div>
+    <h1>Pool-Rechner</h1>
+    <p class="sub">Volumen eintragen, aktuellen und gewünschten Wert wählen – du bekommst die Gramm-Menge für dein Produkt.</p>
+  </header>
+
+  <!-- VOLUME -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">1 · Wasservolumen</span>
+      <span class="vol-badge" id="volBadge">– m³</span>
+    </div>
+    <div class="field">
+      <label for="shape">Wie willst du das Volumen angeben?</label>
+      <select id="shape">
+        <option value="direct">Direkt in m³ eingeben</option>
+        <option value="rect">Aus Maßen – eckiger Pool</option>
+        <option value="round">Aus Maßen – runder Pool</option>
+      </select>
+    </div>
+
+    <div id="dims-direct" class="dimset">
+      <div class="field suffix-wrap">
+        <label for="volDirect">Poolvolumen</label>
+        <input id="volDirect" inputmode="decimal" placeholder="z. B. 24">
+        <span class="suffix">m³</span>
+      </div>
+    </div>
+
+    <div id="dims-rect" class="dimset" hidden>
+      <div class="row">
+        <div class="field suffix-wrap"><label for="rL">Länge</label><input id="rL" inputmode="decimal" placeholder="z. B. 6"><span class="suffix">m</span></div>
+        <div class="field suffix-wrap"><label for="rW">Breite</label><input id="rW" inputmode="decimal" placeholder="z. B. 3"><span class="suffix">m</span></div>
+      </div>
+      <div class="field suffix-wrap"><label for="rD">Ø Wassertiefe <span class="hint">(durchschnittlich)</span></label><input id="rD" inputmode="decimal" placeholder="z. B. 1,4"><span class="suffix">m</span></div>
+    </div>
+
+    <div id="dims-round" class="dimset" hidden>
+      <div class="row">
+        <div class="field suffix-wrap"><label for="cDia">Durchmesser</label><input id="cDia" inputmode="decimal" placeholder="z. B. 4,5"><span class="suffix">m</span></div>
+        <div class="field suffix-wrap"><label for="cD">Ø Wassertiefe</label><input id="cD" inputmode="decimal" placeholder="z. B. 1,2"><span class="suffix">m</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALCULATORS -->
+  <div class="card">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-chlor" aria-selected="true" data-tab="chlor">Schockchlor</button>
+      <button class="tab" role="tab" id="tab-plus" aria-selected="false" data-tab="plus">pH-Plus</button>
+      <button class="tab" role="tab" id="tab-minus" aria-selected="false" data-tab="minus">pH-Minus</button>
+    </div>
+
+    <!-- CHLOR -->
+    <div class="panel active" id="panel-chlor" role="tabpanel" aria-labelledby="tab-chlor">
+      <div class="brand-row">
+        <label for="ch-brand">Marke</label>
+        <select id="ch-brand" class="brand-select">
+          <option value="summerfun">Summer Fun</option>
+          <option value="manual">Eigene Werte (manuell)</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field suffix-wrap"><label for="ch-cur">Aktueller Wert</label><input id="ch-cur" inputmode="decimal" placeholder="z. B. 0,2"><span class="suffix">mg/l</span></div>
+        <div class="field suffix-wrap"><label for="ch-tar">Zielwert</label><input id="ch-tar" inputmode="decimal" value="10"><span class="suffix">mg/l</span></div>
+      </div>
+      <div class="result idle" id="ch-result"><div class="amount">– g</div></div>
+      <div class="pkg">
+        <button class="pkg-toggle" data-pkg="chlor" aria-expanded="false">⚙︎ Dosierung anzeigen <span class="chev">▾</span></button>
+        <div class="pkg-body" hidden>
+          <p class="pkg-flag" id="ch-flag">✓ Richtwerte von Summer Fun – automatisch eingetragen.</p>
+          <p class="pkg-note">Bei „Eigene Werte" kannst du frei eintragen, was auf deiner Packung steht.</p>
+          <div class="formula">
+            <input id="ch-A" inputmode="decimal" value="100"><span class="u">g pro</span>
+            <input id="ch-B" inputmode="decimal" value="10"><span class="u">m³ erhöhen um</span>
+            <input id="ch-C" inputmode="decimal" value="10"><span class="u">mg/l</span>
+          </div>
+          <p class="ranges"><b>Richtwert Zielbereich:</b> freies Chlor meist 0,5–1,0 mg/l (privat oft bis 3 mg/l). Schocken liegt höher (~10 mg/l).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- pH PLUS -->
+    <div class="panel" id="panel-plus" role="tabpanel" aria-labelledby="tab-plus">
+      <div class="brand-row">
+        <label for="pp-brand">Marke</label>
+        <select id="pp-brand" class="brand-select">
+          <option value="summerfun">Summer Fun</option>
+          <option value="manual">Eigene Werte (manuell)</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field"><label for="pp-cur">Aktueller pH</label><input id="pp-cur" inputmode="decimal" placeholder="z. B. 6,8"></div>
+        <div class="field"><label for="pp-tar">Ziel-pH</label><input id="pp-tar" inputmode="decimal" value="7,2"></div>
+      </div>
+      <div class="result idle" id="pp-result"><div class="amount">– g</div></div>
+      <div class="pkg">
+        <button class="pkg-toggle" data-pkg="plus" aria-expanded="false">⚙︎ Dosierung anzeigen <span class="chev">▾</span></button>
+        <div class="pkg-body" hidden>
+          <p class="pkg-flag" id="pp-flag">✓ Richtwerte von Summer Fun – automatisch eingetragen.</p>
+          <p class="pkg-note">pH reagiert nicht-linear – lieber in Schritten dosieren und nachmessen.</p>
+          <div class="formula">
+            <input id="pp-A" inputmode="decimal" value="100"><span class="u">g pro</span>
+            <input id="pp-B" inputmode="decimal" value="10"><span class="u">m³ erhöhen um</span>
+            <input id="pp-C" inputmode="decimal" value="0,2"><span class="u">pH</span>
+          </div>
+          <p class="ranges"><b>Richtwert Zielbereich:</b> pH 7,0–7,4 (ideal ~7,2).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- pH MINUS -->
+    <div class="panel" id="panel-minus" role="tabpanel" aria-labelledby="tab-minus">
+      <div class="brand-row">
+        <label for="pm-brand">Marke</label>
+        <select id="pm-brand" class="brand-select">
+          <option value="summerfun">Summer Fun</option>
+          <option value="manual">Eigene Werte (manuell)</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field"><label for="pm-cur">Aktueller pH</label><input id="pm-cur" inputmode="decimal" placeholder="z. B. 7,8"></div>
+        <div class="field"><label for="pm-tar">Ziel-pH</label><input id="pm-tar" inputmode="decimal" value="7,2"></div>
+      </div>
+      <div class="result idle" id="pm-result"><div class="amount">– g</div></div>
+      <div class="pkg">
+        <button class="pkg-toggle" data-pkg="minus" aria-expanded="false">⚙︎ Dosierung anzeigen <span class="chev">▾</span></button>
+        <div class="pkg-body" hidden>
+          <p class="pkg-flag" id="pm-flag">✓ Richtwerte von Summer Fun – automatisch eingetragen.</p>
+          <p class="pkg-note">pH reagiert nicht-linear – lieber in Schritten dosieren und nachmessen.</p>
+          <div class="formula">
+            <input id="pm-A" inputmode="decimal" value="150"><span class="u">g pro</span>
+            <input id="pm-B" inputmode="decimal" value="10"><span class="u">m³ senken um</span>
+            <input id="pm-C" inputmode="decimal" value="0,2"><span class="u">pH</span>
+          </div>
+          <p class="ranges"><b>Richtwert Zielbereich:</b> pH 7,0–7,4 (ideal ~7,2).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="save-note">💡 Tipp: Speicher die Seite als Lesezeichen oder leg sie auf den Homescreen – deine Eingaben (Volumen & Dosierungen) bleiben auf dem Gerät gespeichert.</div>
+
+  <footer>
+    Alle Werte sind Richtwerte. Maßgeblich ist immer die Dosieranleitung deines Produkts.<br>Chemikalien getrennt und nie direkt mischen – immer ins Wasser geben, nicht umgekehrt.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var LS_KEY = "poolrechner_v1";
+
+  function num(v){
+    if(v==null) return NaN;
+    var s = String(v).trim().replace(/\s/g,"").replace(",",".");
+    if(s==="") return NaN;
+    var n = parseFloat(s);
+    return isFinite(n) ? n : NaN;
+  }
+  function fmt(n, dec){
+    if(dec==null) dec = (n>=100?0:1);
+    var s = n.toFixed(dec);
+    if(dec>0) s = s.replace(/\.?0+$/,"");
+    return s.replace(".",",");
+  }
+  function $(id){return document.getElementById(id);}
+  function all(sel){return Array.prototype.slice.call(document.querySelectorAll(sel));}
+
+  // ---- Brand presets ----
+  // Add future brands here as new entries per chemical.
+  var BRANDS = {
+    chlor: { summerfun:{A:"100", B:"10", C:"10"} },
+    plus:  { summerfun:{A:"100", B:"10", C:"0,2"} },
+    minus: { summerfun:{A:"150", B:"10", C:"0,2"} }
+  };
+  var PREFIX = { chlor:"ch", plus:"pp", minus:"pm" };
+
+  function applyBrand(chem, save_after){
+    var prefix = PREFIX[chem];
+    var sel = $(prefix+"-brand");
+    var brand = sel.value;
+    var fields = [$(prefix+"-A"), $(prefix+"-B"), $(prefix+"-C")];
+    var flag = $(prefix+"-flag");
+    if(brand==="manual"){
+      fields.forEach(function(el){ el.readOnly=false; el.classList.remove("locked"); });
+      if(flag) flag.classList.remove("show");
+    }else{
+      var p = BRANDS[chem][brand];
+      if(p){
+        $(prefix+"-A").value = p.A;
+        $(prefix+"-B").value = p.B;
+        $(prefix+"-C").value = p.C;
+      }
+      fields.forEach(function(el){ el.readOnly=true; el.classList.add("locked"); });
+      if(flag) flag.classList.add("show");
+    }
+    if(save_after!==false) recalc();
+  }
+
+  // ---- Volume ----
+  function calcVolume(){
+    var shape = $("shape").value, v = NaN;
+    if(shape==="direct"){ v = num($("volDirect").value); }
+    else if(shape==="rect"){ v = num($("rL").value)*num($("rW").value)*num($("rD").value); }
+    else if(shape==="round"){ var d=num($("cDia").value); v = Math.PI*(d/2)*(d/2)*num($("cD").value); }
+    if(!isFinite(v) || v<=0){ $("volBadge").textContent = "– m³"; return NaN; }
+    $("volBadge").textContent = fmt(v, v<10?2:1) + " m³";
+    return v;
+  }
+
+  // ---- Dosing ----
+  // direction: +1 means we add to raise the value, -1 means we add to lower it
+  function calcDose(prefix, resultId, direction){
+    var V = calcVolume();
+    var cur = num($(prefix+"-cur").value);
+    var tar = num($(prefix+"-tar").value);
+    var A = num($(prefix+"-A").value);
+    var B = num($(prefix+"-B").value);
+    var C = num($(prefix+"-C").value);
+    var box = $(resultId);
+    box.className = "result";
+
+    if(!isFinite(V)){ setIdle(box, "Volumen oben eintragen"); return; }
+    if(!isFinite(cur) || !isFinite(tar)){ setIdle(box, "Werte eintragen"); return; }
+    if(!isFinite(A)||!isFinite(B)||!isFinite(C)||B<=0||C<=0||A<=0){ setIdle(box, "Dosierung prüfen"); return; }
+
+    var delta = direction>0 ? (tar-cur) : (cur-tar);
+    if(delta <= 0){
+      box.className = "result warn";
+      box.innerHTML = '<div class="amount">'+(direction>0?"Schon erreicht ✓":"Schon erreicht ✓")+'</div>'+
+        '<div class="detail">Kein Nachdosieren nötig.</div>';
+      return;
+    }
+    var ratePerM3PerUnit = A/(B*C);
+    var grams = ratePerM3PerUnit * delta * V;
+
+    box.innerHTML =
+      '<div class="lead">Du brauchst</div>'+
+      '<div class="amount">'+fmt(grams)+'<span class="unit">g</span></div>'+
+      '<div class="detail">für '+fmt(V, V<10?2:1)+' m³ · '+(direction>0?"+":"−")+fmt(delta,2)+
+        ( $(prefix+"-cur").id.indexOf("ch")===0 ? " mg/l" : " pH" )+'</div>';
+  }
+  function setIdle(box, msg){
+    box.className = "result idle";
+    box.innerHTML = '<div class="amount">'+msg+'</div>';
+  }
+
+  function recalc(){
+    calcVolume();
+    calcDose("ch","ch-result", +1);
+    calcDose("pp","pp-result", +1);
+    calcDose("pm","pm-result", -1);
+    save();
+  }
+
+  // ---- Shape switch ----
+  $("shape").addEventListener("change", function(){
+    var s = this.value;
+    $("dims-direct").hidden = s!=="direct";
+    $("dims-rect").hidden   = s!=="rect";
+    $("dims-round").hidden  = s!=="round";
+    recalc();
+  });
+
+  // ---- Tabs ----
+  var accents = {chlor:["--chlor","--chlor-soft"], plus:["--plus","--plus-soft"], minus:["--minus","--minus-soft"]};
+  all(".tab").forEach(function(t){
+    t.addEventListener("click", function(){
+      var tab = t.dataset.tab;
+      all(".tab").forEach(function(x){x.setAttribute("aria-selected", x===t?"true":"false");});
+      all(".panel").forEach(function(p){p.classList.toggle("active", p.id==="panel-"+tab);});
+      var root = document.documentElement.style;
+      root.setProperty("--accent","var("+accents[tab][0]+")");
+      root.setProperty("--accent-soft","var("+accents[tab][1]+")");
+      save();
+    });
+  });
+
+  // ---- Brand selectors ----
+  ["chlor","plus","minus"].forEach(function(chem){
+    $(PREFIX[chem]+"-brand").addEventListener("change", function(){ applyBrand(chem); });
+  });
+
+  // ---- Package toggles ----
+  all(".pkg-toggle").forEach(function(b){
+    b.addEventListener("click", function(){
+      var open = b.getAttribute("aria-expanded")==="true";
+      b.setAttribute("aria-expanded", String(!open));
+      b.parentElement.querySelector(".pkg-body").hidden = open;
+    });
+  });
+
+  // ---- Persistence ----
+  var fieldIds = ["shape","volDirect","rL","rW","rD","cDia","cD",
+    "ch-brand","ch-cur","ch-tar","ch-A","ch-B","ch-C",
+    "pp-brand","pp-cur","pp-tar","pp-A","pp-B","pp-C",
+    "pm-brand","pm-cur","pm-tar","pm-A","pm-B","pm-C"];
+  function save(){
+    try{
+      var data={};
+      fieldIds.forEach(function(id){ var el=$(id); if(el) data[id]=el.value; });
+      var sel = document.querySelector('.tab[aria-selected="true"]');
+      if(sel) data._tab = sel.dataset.tab;
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }catch(e){}
+  }
+  function load(){
+    try{
+      var raw = localStorage.getItem(LS_KEY);
+      if(!raw) return;
+      var data = JSON.parse(raw);
+      fieldIds.forEach(function(id){ var el=$(id); if(el && data[id]!=null) el.value=data[id]; });
+      // restore shape visibility
+      $("shape").dispatchEvent(new Event("change"));
+      if(data._tab){ var tb=document.querySelector('.tab[data-tab="'+data._tab+'"]'); if(tb) tb.click(); }
+    }catch(e){}
+  }
+
+  // ---- Wire up ----
+  all("input").forEach(function(el){ el.addEventListener("input", recalc); });
+  load();
+  ["chlor","plus","minus"].forEach(function(chem){ applyBrand(chem, false); });
+  recalc();
+})();
+</script>
+</body>
+</html>
